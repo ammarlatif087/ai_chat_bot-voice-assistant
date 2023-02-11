@@ -2,7 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-String apiKey = "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";
+String apiKey = "<----your Api Key----->";
+// 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
 
 class ApiServices {
   static var baseUrl = Uri.parse("https://api.openai.com/v1/completions");
@@ -17,7 +18,7 @@ class ApiServices {
       headers: header,
       body: jsonEncode({
         "model": "text-davinci-003",
-        "prompt": "$message",
+        "prompt": "Say this is a test",
         "temperature": 0,
         "max_tokens": 500
       }),
