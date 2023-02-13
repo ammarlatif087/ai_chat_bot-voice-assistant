@@ -2,8 +2,13 @@
     package="com.example.ai_chat_bot">
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.INTERNET" />
+    <queries>  
+  <intent>  
+      <action android:name="android.intent.action.TTS_SERVICE" />  
+  </intent>  
+ </queries>
    <application
-        android:label="ai_chat_bot"
+        android:label="Ai chatBot chatGPT"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
