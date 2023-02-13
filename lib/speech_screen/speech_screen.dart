@@ -1,10 +1,11 @@
-import 'package:ai_chat_bot/api_services.dart';
-import 'package:ai_chat_bot/colors.dart';
+import 'package:ai_chat_bot/api_Services/api_services.dart';
+import 'package:ai_chat_bot/utils/tts.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:speech_to_text/speech_to_text.dart';
-
-import '../chat_model.dart';
+import '../model/chat_model.dart';
+import '../utils/colors.dart';
 
 class SpeechScreen extends StatefulWidget {
   const SpeechScreen({super.key});
@@ -17,6 +18,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
   SpeechToText speechToText = SpeechToText();
   var text = "Hold the button and  start speaking";
   var isListening = false;
+  late bool isLoading;
   final List<ChatModel> message = [];
   var scrollController = ScrollController();
 
@@ -26,6 +28,12 @@ class _SpeechScreenState extends State<SpeechScreen> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
+  }
+
+  @override
+  void initState() {
+    isLoading = false;
+    super.initState();
   }
 
   @override
@@ -40,7 +48,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
           color: textColor,
         ),
         title: const Text(
-          'Speech to Text',
+          'AI chat bot',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             color: textColor,
@@ -58,6 +66,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
         showTwoGlows: true,
         child: GestureDetector(
           onTapDown: (details) async {
+            TextToSpeech.tts.stop();
             if (!isListening) {
               var available = await speechToText.initialize();
               if (available) {
@@ -76,16 +85,30 @@ class _SpeechScreenState extends State<SpeechScreen> {
             setState(() {
               isListening = false;
             });
-            speechToText.stop();
-            setState(() {
-              message.add(ChatModel(text: text, type: ChatMessageType.user));
-            });
-            var msg = await ApiServices.sendMessage(text);
-
-            print(msg);
-            setState(() {
-              message.add(ChatModel(text: msg, type: ChatMessageType.bot));
-            });
+            await speechToText.stop();
+            if (text.isNotEmpty &&
+                text != "Hold the button and  start speaking") {
+              setState(() {
+                isLoading = true;
+                message.add(ChatModel(text: text, type: ChatMessageType.user));
+              });
+              var msg = await ApiServices.sendMessage(text);
+              if (msg != null) {
+                msg = msg.trim();
+              }
+              setState(() {
+                isLoading = false;
+                isListening = false;
+                message.add(ChatModel(text: msg, type: ChatMessageType.bot));
+              });
+              Future.delayed(const Duration(microseconds: 500), () {
+                TextToSpeech.speak(msg, context);
+              });
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Failed to process ...Try again!'),
+                  duration: Duration(seconds: 1)));
+            }
           },
           child: CircleAvatar(
             backgroundColor: bgColor,
@@ -103,12 +126,14 @@ class _SpeechScreenState extends State<SpeechScreen> {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         child: Column(
           children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: isListening ? Colors.black : Colors.black45,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+            Center(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: isListening ? Colors.black : Colors.black45,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
             const SizedBox(
@@ -121,18 +146,43 @@ class _SpeechScreenState extends State<SpeechScreen> {
                 decoration: BoxDecoration(
                     color: chatBgColor,
                     borderRadius: BorderRadius.circular(22)),
-                child: ListView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  controller: scrollController,
-                  itemCount: message.length,
-                  shrinkWrap: true,
-                  itemBuilder: ((context, index) {
-                    var chat = message[index];
-                    return chatBubble(
-                      chatText: chat.text,
-                      type: chat.type,
-                    );
-                  }),
+                child: Column(
+                  children: [
+                    Visibility(
+                      visible: message.isEmpty,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Center(
+                            child: Text(
+                          "How may i help you today?",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: bgColor),
+                        )),
+                      ),
+                    ),
+                    ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      controller: scrollController,
+                      itemCount: message.length,
+                      shrinkWrap: true,
+                      itemBuilder: ((context, index) {
+                        var chat = message[index];
+                        return chatBubble(
+                          chatText: chat.text,
+                          type: chat.type,
+                        );
+                      }),
+                    ),
+                    Visibility(
+                      visible: isLoading,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: progressIndicator(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -146,12 +196,17 @@ class _SpeechScreenState extends State<SpeechScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           backgroundColor: bgColor,
-          child: Icon(
-            Icons.person,
-            color: Colors.white,
-          ),
+          child: type == ChatMessageType.bot
+              ? const Icon(
+                  Icons.adb_outlined,
+                  color: Colors.white,
+                )
+              : const Icon(
+                  Icons.person,
+                  color: Colors.white,
+                ),
         ),
         const SizedBox(
           width: 12,
@@ -159,22 +214,40 @@ class _SpeechScreenState extends State<SpeechScreen> {
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 8),
-            decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+                color: type == ChatMessageType.user ? Colors.white : bgColor,
+                borderRadius: const BorderRadius.only(
                   topRight: Radius.circular(22),
                   bottomRight: Radius.circular(22),
                   bottomLeft: Radius.circular(22),
                 )),
             child: Text("$chatText",
-                style: const TextStyle(
-                  color: chatBgColor,
-                  fontWeight: FontWeight.w400,
+                style: TextStyle(
+                  color: type == ChatMessageType.user ? bgColor : Colors.white,
+                  fontWeight: type == ChatMessageType.bot
+                      ? FontWeight.w600
+                      : FontWeight.w400,
                 )),
           ),
         ),
       ],
+    );
+  }
+
+  Widget progressIndicator() {
+    return Center(
+      child: SpinKitWave(
+        itemCount: 3,
+        size: 30,
+        itemBuilder: (context, index) {
+          return const DecoratedBox(
+              decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: bgColor,
+          ));
+        },
+      ),
     );
   }
 }
