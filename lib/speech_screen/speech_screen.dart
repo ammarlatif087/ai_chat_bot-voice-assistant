@@ -139,30 +139,28 @@ class _SpeechScreenState extends State<SpeechScreen> {
             const SizedBox(
               height: 12,
             ),
-            Expanded(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                decoration: BoxDecoration(
-                    color: chatBgColor,
-                    borderRadius: BorderRadius.circular(22)),
-                child: Column(
-                  children: [
-                    Visibility(
-                      visible: message.isEmpty,
-                      child: const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Center(
-                            child: Text(
-                          "How may i help you today?",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                              color: bgColor),
-                        )),
-                      ),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+              decoration: BoxDecoration(
+                  color: chatBgColor, borderRadius: BorderRadius.circular(22)),
+              child: Column(
+                children: [
+                  Visibility(
+                    visible: message.isEmpty,
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Center(
+                          child: Text(
+                        "How may i help you today?",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: bgColor),
+                      )),
                     ),
-                    ListView.builder(
+                  ),
+                  Expanded(
+                    child: ListView.builder(
                       physics: const BouncingScrollPhysics(),
                       controller: scrollController,
                       itemCount: message.length,
@@ -175,15 +173,15 @@ class _SpeechScreenState extends State<SpeechScreen> {
                         );
                       }),
                     ),
-                    Visibility(
-                      visible: isLoading,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: progressIndicator(),
-                      ),
+                  ),
+                  Visibility(
+                    visible: isLoading,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: progressIndicator(),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
